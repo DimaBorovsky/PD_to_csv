@@ -1,0 +1,64 @@
+def sendSlack(currentResult, buildNumber, filePath) {
+    def channel = '#your-slack-channel' // Replace with actual Slack channel
+    def message = "${currentResult}\n"
+    message += "PD Alert Report | Jenkins Job #${buildNumber} Reports:\n"
+    message += "https://your-jenkins-url/job/NOC/job/PD_incident_report/${buildNumber}/console\n" // Replace with actual Jenkins URL
+    message += "CSV Report: ${filePath}"
+
+    def colorState = (currentResult == "SUCCESS") ? "good" : "danger"
+    def emojiState = (currentResult == "SUCCESS") ? ":white_check_mark:" : ":alert:"
+
+    slackSend iconEmoji: emojiState, color: colorState, botUser: true, channel: channel, message: message
+    slackUploadFile channel: channel, filePath: filePath, initialComment: "Uploading CSV report for Build #${buildNumber}"
+}
+
+node('your-node-label') { // Replace with actual node label
+    stage('Pull Repository') {
+        deleteDir()
+        checkout scm
+    }
+
+    stage("Prepare Environment") {
+        withEnv([
+            "API_KEY=${env.API_KEY}",
+            "S3_BUCKET_NAME=${env.S3_BUCKET_NAME}",
+            "S3_BUCKET_PATH=${env.S3_BUCKET_PATH}",
+            "S3_BUCKET_REGION=${env.S3_BUCKET_REGION}",
+            "TO=receiver@example.com" // Replace with the actual email
+        ]) {
+            sh 'pip install --upgrade pip' // Adjust path if necessary
+            sh 'pip install -r ./path/to/requirements.txt' // Replace with actual path
+        }
+    }
+
+    stage('Run Script') {
+        sh "python3 path/to/main.py" // Replace with actual script path
+    }
+
+    stage('Handle CSV File') {
+        script {
+            def csvFile = sh(script: "ls pagerduty_incidents_*.csv", returnStdout: true).trim()
+            if (!fileExists(csvFile)) {
+                error "CSV file not found!"
+            }
+            sh "mv ${csvFile} \$WORKSPACE/report.csv"
+        }
+    }
+
+    stage('Verify CSV File') {
+        sh 'ls -lh report.csv'
+    }
+
+    stage('Send Email') {
+        emailext(
+            subject: "Jenkins: PD Incident Report",
+            body: "Attached is the PD report.",
+            attachmentsPattern: "report.csv",
+            to: env.TO
+        )
+    }
+
+    stage('Slack Notification & Upload') {
+        sendSlack(currentBuild.currentResult, env.BUILD_NUMBER, "${env.WORKSPACE}/report.csv")
+    }
+}
