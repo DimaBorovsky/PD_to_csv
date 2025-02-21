@@ -62,4 +62,31 @@ It respects API rate limits by adding a delay between requests.
 Only incidents from the last three hours are retrieved.
 The AWS S3 upload feature is currently disabled by default.
 
-Disclaimer 
+Jenkins Pipeline for PD Incident Report
+
+Overview
+This Jenkins pipeline automates the process of fetching incident reports, generating a CSV file, and notifying relevant teams via Slack and email.
+
+Stages:
+Pull Repository: Cleans the workspace and checks out the latest code from SCM.
+Prepare Environment: Sets up necessary environment variables and installs dependencies.
+Run Script: Executes the Python script to generate the incident report.
+Handle CSV File: Moves the generated CSV file to a predefined location.
+Verify CSV File: Ensures the CSV file exists before proceeding.
+Send Email: Sends an email with the report attached.
+Slack Notification & Upload: Sends a Slack message and uploads the CSV file.
+
+Configuration:
+Jenkins Node: Update node('your-node-label') with the appropriate Jenkins agent label.
+Paths: Replace path/to/requirements.txt and path/to/main.py with actual paths.
+Slack Channel: Set the correct Slack channel in def channel = '#your-slack-channel'.
+Email Recipient: Update TO=receiver@example.com with the desired recipient.
+
+Dependencies:
+Python 3
+Required Python packages (defined in requirements.txt)
+Jenkins plugins: Slack Notification, Email Extension
+
+Notes:
+Ensure that the workspace has the correct permissions to execute scripts and move files.
+Modify environment variables as needed to match your setup.
